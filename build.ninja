@@ -1,0 +1,34 @@
+cxx      = clang++ -std=c++14 -c
+cxxflags = -stdlib=libc++ -g
+
+ld      = clang++
+ldflags = -nodefaultlibs -lc++ -lcxxrt -lm -lc -lgcc_s -lgcc -g
+
+rule compile-cxx
+  command     = $cxx $cxxflags $in -o $out -MMD -MF $out.d
+  description = compile-c++ $in > $out
+  deps        = gcc
+  depfile     = $out.d
+
+rule link-executable
+  command     = $ld $ldflags $in -o $out
+  description = link-executable $in > $out
+
+rule run
+  command     = ./$in $args
+  description = run $in
+  pool        = console
+
+rule debug
+  command     = gdb $gdbflags ./$in $args
+  description = debug $in
+  pool        = console
+
+build json_ostream_tests.o: compile-cxx json_ostream_tests.cxx
+build json_ostream_tests: link-executable json_ostream_tests.o
+build run: run json_ostream_tests
+build debug: debug json_ostream_tests
+build debug-mi: debug json_ostream_tests
+  gdbflags = --interpreter=mi
+
+default json_ostream_tests
