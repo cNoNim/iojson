@@ -64,8 +64,9 @@ public:
     return os;
   }
 
-  friend this_type
-  operator<<(stream_type & os, quoting_tag const &);
+  template<typename OS>
+  friend __quoting_proxy<OS>
+  operator<<(OS & os, quoting_tag const &);
 };
 
 template<typename OStream, typename Parent>
