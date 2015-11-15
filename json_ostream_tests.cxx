@@ -7,25 +7,34 @@ struct vec2i {
 
 namespace json {
   template<>
-  struct value<vec2i> {
-    template<typename OStream>
-    void
-    operator()(OStream& os, vec2i const & value) const {
-      os << json::object <<
+  struct value_type<vec2i> {
+  template<typename Json>
+  void
+  operator()(Json const & json, vec2i const & value) const {
+      json << object <<
         "x" << value.x <<
         "y" << value.y <<
-        json::close;
+        close;
     }
   };
 }
 
 int main() {
   using namespace std;
+
+  cout << json::array <<
+    json::value << vec2i{ 3, 4 } <<
+    json::close << endl;
+
+  cout << json::value << vec2i{1, 2} << std::endl;
+
+  cout << json::array << 1 << 2 << 3 << json::close << std::endl;
+
   cout << json::object <<
     "null" << nullptr <<
     "true" << true <<
     "false" << false <<
-    "int" << 1 <<
+    "int" << json::value << 1 <<
     "float" << 0.1 <<
     "string" << "simple" <<
     "escaped_string" << "\b\t\n\f\r\"\\\1" <<
@@ -37,7 +46,7 @@ int main() {
     "empty_array" << json::array << json::close <<
     "array" << json::array << 1 << 2.2 << std::to_string(3) << json::close <<
     "array_of_object_1" << json::array <<
-      vec2i{ 3, 4 } <<
+      json::value << vec2i{ 3, 4 } <<
       json::object << json::close <<
       json::close <<
     "array_of_object_2" << json::array <<
@@ -45,14 +54,20 @@ int main() {
       vec2i{ 3, 4 } <<
       json::close <<
     "array_of_array" << json::array <<
-      json::array << 1 << 2 << 3 << json::close <<
+      json::value << json::array << 1 << 2 << 3 << json::close <<
       json::array << 4 << 5 << 6 << json::close <<
+      json::close <<
+    "object_with_array" << json::object <<
+      "array" << json::array << 1 << 2 << 3 << json::close <<
       json::close <<
     json::close << endl;
   return 0;
 }
 
 /* output (pretty):
+[ { "x": 3, "y": 4 } ]
+{ "x": 1, "y": 2 }
+[ 1, 2, 3 ]
 {
   "null": null,
   "true": true,
@@ -79,6 +94,9 @@ int main() {
   "array_of_array": [
     [ 1, 2, 3 ],
     [ 4, 5, 6 ]
-  ]
+  ],
+  "object_with_array": {
+    "array": [ 1, 2, 3 ]
+  }
 }
 */
