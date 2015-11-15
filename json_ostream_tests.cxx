@@ -7,24 +7,24 @@ struct vec2i {
 };
 
 namespace json {
-  template<>
-  struct value_type<vec2i> {
-  template<typename Json>
-  void
-  operator()(Json const & json, vec2i const & value) const {
-      json << object <<
-        "x" << value.x <<
-        "y" << value.y <<
-        close;
-    }
-  };
+template<>
+struct value_type<vec2i> {
+  template<typename Return, typename Json>
+  Return
+  apply(Json const & json, vec2i const & value) const {
+    return json << object << "x" << value.x << "y" << value.y << close;
+  }
+};
 }
 
 int main() {
   using namespace std;
 
+  char const * hello = "hello";
+  char world[] = "world";
+
   cout << json::array <<
-    json::value << vec2i(3, 4) <<
+    json::value << vec2i(3, 4) << 'c' << hello << world <<
     json::close << endl;
 
   cout << json::value << vec2i(1, 2) << std::endl;
@@ -38,7 +38,7 @@ int main() {
     "int" << json::value << 1 <<
     "float" << 0.1 <<
     "string" << "simple" <<
-    "escaped_string" << "\b\t\n\f\r\"\\\1" <<
+    "escaped_string" << "\b\t\n\f\r\"\\\x7f" <<
     "nested" << json::object <<
         "empty" << json::object << json::close <<
         "foo" << "bar" <<
@@ -64,40 +64,3 @@ int main() {
     json::close << endl;
   return 0;
 }
-
-/* output (pretty):
-[ { "x": 3, "y": 4 } ]
-{ "x": 1, "y": 2 }
-[ 1, 2, 3 ]
-{
-  "null": null,
-  "true": true,
-  "false": false,
-  "int": 1,
-  "float": 0.1,
-  "string": "simple",
-  "escaped_string": "\b\t\n\f\r\"\\\u0001",
-  "nested": {
-    "empty": {},
-    "foo": "bar"
-  },
-  "object": { "x": 1, "y": 2 },
-  "empty_array": [],
-  "array": [ 1, 2.2, "3" ],
-  "array_of_object_1": [
-    { "x": 3, "y": 4 },
-    {}
-  ],
-  "array_of_object_2": [
-    {},
-    { "x": 3, "y": 4 }
-  ],
-  "array_of_array": [
-    [ 1, 2, 3 ],
-    [ 4, 5, 6 ]
-  ],
-  "object_with_array": {
-    "array": [ 1, 2, 3 ]
-  }
-}
-*/
