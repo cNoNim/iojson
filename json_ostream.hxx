@@ -59,43 +59,40 @@ class __quoting_proxy {
   operator<<(OS & os, quoting_tag const &);
 };
 
-template<typename OStream, typename Parent = OStream>
-class __object_proxy;
-template<typename OStream, typename Parent = OStream>
-class __array_proxy;
+template<typename ProxyStream> class __value_proxy;
+template<typename OStream, typename Parent> class __array_proxy;
+template<typename OStream, typename Parent> class __object_proxy;
 
 template<typename ProxyStream>
 class __value_proxy {
+  template<typename T, typename U> friend class __object_proxy;
+  template<typename T, typename U> friend class __array_proxy;
   ProxyStream const & proxy;
 
-  explicit
-  __value_proxy(ProxyStream const & proxy) : proxy(proxy) {}
-
+public:
   using stream_type = typename ProxyStream::stream_type;
   using char_type = typename ProxyStream::char_type;
   using traits_type = typename ProxyStream::traits_type;
 
+  explicit
+  __value_proxy(ProxyStream const & proxy) : proxy(proxy) {}
+
   template<typename T>
   friend auto &
   operator<<(__value_proxy const & proxy, T const & v) {
-    if (proxy.proxy.state != ProxyStream::__state::Closed) {
-      auto & os = proxy.proxy.os;
-      value<T>()(os, v);
-    }
+    if (proxy.proxy.is_open()) value<T>()(proxy.proxy.get_stream(), v);
     return proxy.proxy;
   }
 
   friend auto
   operator<<(__value_proxy const & proxy, object_tag const &) {
-    return __object_proxy<stream_type, ProxyStream>(proxy.proxy.os, proxy.proxy);
+    return __object_proxy<stream_type, ProxyStream>(proxy.proxy.get_stream(), proxy.proxy);
   }
 
   friend auto
   operator<<(__value_proxy const & proxy, array_tag const &) {
-    return __array_proxy<stream_type, ProxyStream>(proxy.proxy.os, proxy.proxy);
+    return __array_proxy<stream_type, ProxyStream>(proxy.proxy.get_stream(), proxy.proxy);
   }
-
-  friend ProxyStream;
 };
 
 template<typename OStream, typename Parent,
@@ -116,19 +113,22 @@ protected:
     : state(__state::Empty), os(os), parent(parent) {}
 
   bool open() const {
-    if (state == __state::Closed) return false;
+    if (!is_open()) return false;
     os << (state == __state::Empty ? oc : dc);
     state = __state::Opened;
     return true;
   }
 
   void __close() const {
-    if (state != __state::Closed) {
-      if (state == __state::Empty) os << oc;
-      state = __state::Closed;
-      os << cc;
-    }
+    if (!is_open()) return;
+    if (state == __state::Empty) os << oc;
+    state = __state::Closed;
+    os << cc;
   }
+
+public:
+  bool is_open() const { return state != __state::Closed; }
+  OStream & get_stream() const { return os; }
 };
 
 template<typename OStream, typename Parent,
@@ -136,7 +136,7 @@ template<typename OStream, typename Parent,
   typename OStream::char_type dc,
   typename OStream::char_type cc>
 class __base_proxy_spec
-  : protected __base_proxy<OStream, Parent, oc, dc, cc> {
+  : public __base_proxy<OStream, Parent, oc, dc, cc> {
   using base_type   = __base_proxy<OStream, Parent, oc, dc, cc>;
 protected:
   __base_proxy_spec(OStream & os, Parent const & parent) : base_type(os, parent) {}
@@ -149,7 +149,7 @@ template<typename OStream,
   typename OStream::char_type dc,
   typename OStream::char_type cc>
 class __base_proxy_spec<OStream, OStream, oc, dc, cc>
-  : protected __base_proxy<OStream, OStream, oc, dc, cc> {
+  : public __base_proxy<OStream, OStream, oc, dc, cc> {
   using base_type   = __base_proxy<OStream, OStream, oc, dc, cc>;
 protected:
   __base_proxy_spec(OStream & os, OStream const & parent) : base_type(os, parent) {}
@@ -157,13 +157,15 @@ protected:
   close() const { this->__close(); this->os.flush(); return this->os; }
 };
 
-template<typename OStream, typename Parent>
-class __array_proxy : private __base_proxy_spec<OStream, Parent, '[', ',', ']'> {
+template<typename OStream, typename Parent = OStream>
+class __array_proxy
+  : public __base_proxy_spec<OStream, Parent, '[', ',', ']'> {
   template<typename T> friend class __value_proxy;
   template<typename T, typename U> friend class __array_proxy;
   template<typename T, typename U> friend class __object_proxy;
 
   using base_type   = __base_proxy_spec<OStream, Parent, '[', ',', ']'>;
+public:
   using stream_type = typename base_type::stream_type;
   using char_type   = typename base_type::char_type;
   using traits_type = typename base_type::traits_type;
@@ -178,20 +180,20 @@ class __array_proxy : private __base_proxy_spec<OStream, Parent, '[', ',', ']'> 
   template<typename T>
   friend auto &
   operator<<(__array_proxy const & proxy, T const & v) {
-    if (proxy.open()) value<T>()(proxy.os, v);
+    if (proxy.open()) value<T>()(proxy.get_stream(), v);
     return proxy;
   }
 
   friend auto
   operator<<(__array_proxy const & proxy, object_tag const &) {
     proxy.open();
-    return __object_proxy<stream_type, __array_proxy>(proxy.os, proxy);
+    return __object_proxy<stream_type, __array_proxy>(proxy.get_stream(), proxy);
   }
 
   friend auto
   operator<<(__array_proxy const & proxy, array_tag const &) {
     proxy.open();
-    return __array_proxy<stream_type, __array_proxy>(proxy.os, proxy);
+    return __array_proxy<stream_type, __array_proxy>(proxy.get_stream(), proxy);
   }
 
   friend auto &
@@ -204,13 +206,16 @@ class __array_proxy : private __base_proxy_spec<OStream, Parent, '[', ',', ']'> 
   operator<<(OS & os, array_tag const &);
 };
 
-template<typename OStream, typename Parent>
-class __object_proxy : private __base_proxy_spec<OStream, Parent, '{', ',', '}'> {
+template<typename OStream, typename Parent = OStream>
+class __object_proxy
+  : public __base_proxy_spec<OStream, Parent, '{', ',', '}'> {
   template<typename T> friend class __value_proxy;
   template<typename T, typename U> friend class __array_proxy;
   template<typename T, typename U> friend class __object_proxy;
 
   using base_type   = __base_proxy_spec<OStream, Parent, '{', ',', '}'>;
+
+public:
   using stream_type = typename base_type::stream_type;
   using char_type   = typename base_type::char_type;
   using traits_type = typename base_type::traits_type;
@@ -224,7 +229,7 @@ class __object_proxy : private __base_proxy_spec<OStream, Parent, '{', ',', '}'>
 
   friend auto
   operator<<(__object_proxy const & proxy, std::basic_string<char_type> const & str) {
-    if (proxy.open()) proxy.os << quote << str << ':';
+    if (proxy.open()) proxy.get_stream() << quote << str << ':';
     return __value_proxy<__object_proxy>(proxy);
   }
 
