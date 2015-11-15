@@ -191,6 +191,8 @@ public:
   using parent_type = typename base_type::parent_type;
   using char_type   = typename base_type::char_type;
   using traits_type = typename base_type::traits_type;
+  using auto_parent_type = typename std::conditional<
+    std::is_same<stream_type, parent_type>::value, stream_type, parent_type const >::type;
 
   explicit
   __value_proxy(OStream & os)
@@ -203,23 +205,23 @@ public:
   using base_type::get_parent;
 
   template<typename T>
-  friend auto &
+  friend auto_parent_type &
   operator<<(this_type const & proxy, T const & v) {
     value_type<T>()(proxy << value, v);
     return proxy.get_parent();
   }
 
-  friend auto
+  friend this_type
   operator<<(this_type const & proxy, value_tag const &) {
     return proxy;
   }
 
-  friend auto
+  friend __object_proxy<stream_type, parent_type>
   operator<<(this_type const & proxy, object_tag const &) {
     return __object_proxy<stream_type, parent_type>(proxy.get_stream(), proxy.get_parent());
   }
 
-  friend auto
+  friend __array_proxy<stream_type, parent_type>
   operator<<(this_type const & proxy, array_tag const &) {
     return __array_proxy<stream_type, parent_type>(proxy.get_stream(), proxy.get_parent());
   }
@@ -239,6 +241,8 @@ public:
   using parent_type = typename base_type::parent_type;
   using char_type   = typename base_type::char_type;
   using traits_type = typename base_type::traits_type;
+  using auto_parent_type = typename std::conditional<
+    std::is_same<stream_type, parent_type>::value, stream_type, parent_type const >::type;
 
   explicit
   __array_proxy(stream_type & os)
@@ -251,31 +255,31 @@ public:
   using base_type::get_parent;
 
   template<typename T>
-  friend auto &
+  friend this_type const &
   operator<<(this_type const & proxy, T const & v) {
     value_type<T>()(proxy << value, v);
     return proxy;
   }
 
-  friend auto
+  friend __value_proxy<stream_type, this_type>
   operator<<(this_type const & proxy, value_tag const &) {
     proxy.open();
     return __value_proxy<stream_type, this_type>(proxy.get_stream(), proxy);
   }
 
-  friend auto
+  friend __array_proxy<stream_type, this_type>
   operator<<(this_type const & proxy, array_tag const &) {
     proxy.open();
     return __array_proxy<stream_type, this_type>(proxy.get_stream(), proxy);
   }
 
-  friend auto
+  friend __object_proxy<stream_type, this_type>
   operator<<(this_type const & proxy, object_tag const &) {
     proxy.open();
     return __object_proxy<stream_type, this_type>(proxy.get_stream(), proxy);
   }
 
-  friend auto &
+  friend auto_parent_type &
   operator<<(this_type const & proxy, close_tag const &) {
     proxy.close();
     return proxy.get_parent();
@@ -300,6 +304,8 @@ public:
   using parent_type = typename base_type::parent_type;
   using char_type   = typename base_type::char_type;
   using traits_type = typename base_type::traits_type;
+  using auto_parent_type = typename std::conditional<
+    std::is_same<stream_type, parent_type>::value, stream_type, parent_type const >::type;
 
   explicit
   __object_proxy(stream_type & os)
@@ -311,13 +317,13 @@ public:
   using base_type::get_stream;
   using base_type::get_parent;
 
-  friend auto
+  friend __value_proxy<stream_type, this_type>
   operator<<(this_type const & proxy, std::basic_string<char_type> const & str) {
     if (proxy.open()) proxy.get_stream() << quote << str << ':';
     return __value_proxy<stream_type, this_type>(proxy.get_stream(), proxy);
   }
 
-  friend auto &
+  friend auto_parent_type &
   operator<<(this_type const & proxy, close_tag const &) {
     proxy.close();
     return proxy.get_parent();

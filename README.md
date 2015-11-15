@@ -4,4 +4,4 @@
 
 # Dependencies
 
-`C++14` is required.
+`C++11` is required.
