@@ -3,16 +3,58 @@
 #include <iomanip>
 #include <ostream>
 #include <string>
-#include <type_traits>
 #include <utility>
+
+#if __cplusplus <= 199711L
+#define constexpr
+namespace json {
+
+template <bool, typename I, typename> struct conditional { typedef I type;};
+template <typename I, typename T> struct conditional<false, I, T> { typedef T type; };
+template <bool, typename T = void> struct enable_if {};
+template <typename T> struct enable_if<true, T> { typedef T type; };
+template <typename> struct is_floating_point { static const bool value = false; };
+template <> struct is_floating_point<float> { static const bool value = true; };
+template <> struct is_floating_point<double> { static const bool value = true; };
+template <> struct is_floating_point<long double> { static const bool value = true; };
+template <typename> struct is_integral { static const bool value = false; };
+template <> struct is_integral<bool> { static const bool value = true; };
+template <> struct is_integral<char> { static const bool value = true; };
+template <> struct is_integral<signed char> { static const bool value = true; };
+template <> struct is_integral<unsigned char> { static const bool value = true; };
+template <> struct is_integral<wchar_t> { static const bool value = true; };
+template <> struct is_integral<short> { static const bool value = true; };
+template <> struct is_integral<unsigned short> { static const bool value = true; };
+template <> struct is_integral<int> { static const bool value = true; };
+template <> struct is_integral<unsigned int> { static const bool value = true; };
+template <> struct is_integral<long> { static const bool value = true; };
+template <> struct is_integral<unsigned long> { static const bool value = true; };
+template <> struct is_integral<long long> { static const bool value = true; };
+template <> struct is_integral<unsigned long long> { static const bool value = true; };
+template <typename, typename> struct is_same { static const bool value = false; };
+template <typename T> struct is_same<T, T> { static const bool value = true; };
+}
+#else
+#include <type_traits>
+namespace json {
+using std::conditional;
+using std::enable_if;
+using std::is_floating_point;
+using std::is_integral;
+using std::is_same;
+}
+#endif
 
 namespace json {
 
 template<typename T, typename Enabled = void>
 struct value_type;
 
+#if __cplusplus > 199711L
 inline namespace _v1 {
+#endif
 
+enum null_type { null = 0 };
 struct quoting_tag { constexpr quoting_tag() {} } constexpr quote;
 struct value_tag   { constexpr value_tag() {} }   constexpr value;
 struct array_tag   { constexpr array_tag() {} }   constexpr array;
@@ -25,13 +67,15 @@ template<typename OStream, typename Parent> class __object_proxy;
 
 template<typename OStream>
 class __quoting_proxy {
-  using this_type = __quoting_proxy;
+  typedef __quoting_proxy this_type;
   OStream & os;
 
 public:
-  using stream_type = OStream;
-  using char_type   = typename OStream::char_type;
-  using traits_type = typename OStream::traits_type;
+  typedef OStream                              stream_type;
+  typedef typename OStream::char_type          char_type;
+  typedef typename OStream::traits_type        traits_type;
+  typedef std::basic_string<char_type>         string_type;
+  typedef typename string_type::const_iterator const_iterator;
 
   explicit
   __quoting_proxy(stream_type & os) : os(os) { }
@@ -39,13 +83,17 @@ public:
   stream_type & get_stream() const { return os; }
 
   friend stream_type &
-  operator<<(this_type const & proxy, std::basic_string<char_type> const & str) {
+  operator<<(this_type const & proxy, string_type const & str) {
     using namespace std;
-    auto & os = proxy.get_stream();
+    stream_type & os = proxy.get_stream();
     os << '"';
-    auto flags = os.flags(ios::hex | ios::right);
-    auto fill = os.fill('0');
-    for(auto && c : str)
+    std::ios_base::fmtflags flags = os.flags(ios::hex | ios::right);
+    char_type fill = os.fill('0');
+    string_type const & __range = str;
+    for(const_iterator __begin = __range.begin(),
+        __end = __range.end();
+      __begin != __end; ++__begin) {
+      char_type c = *__begin;
       switch(c) {
       case '\b': os.put('\\'); os.put('b'); continue;
       case '\t': os.put('\\'); os.put('t'); continue;
@@ -58,6 +106,7 @@ public:
           os << "\\u" << setw(4) << traits_type::to_int_type(c);
         else os.put(c);
       };
+    }
     os.fill(fill);
     os.flags(flags);
     os << '"';
@@ -71,13 +120,13 @@ public:
 
 template<typename OStream, typename Parent>
 class __base_value_proxy {
-  using this_type = __base_value_proxy;
+  typedef __base_value_proxy this_type;
 
 public:
-  using stream_type = OStream;
-  using parent_type = Parent;
-  using char_type   = typename OStream::char_type;
-  using traits_type = typename OStream::traits_type;
+  typedef OStream                       stream_type;
+  typedef Parent                        parent_type;
+  typedef typename OStream::char_type   char_type;
+  typedef typename OStream::traits_type traits_type;
 
 protected:
   __base_value_proxy(stream_type & os, parent_type const & parent)
@@ -95,14 +144,14 @@ protected:
 template<typename OStream, typename Parent>
 class __base_value_proxy_spec
   : public __base_value_proxy<OStream, Parent> {
-  using this_type = __base_value_proxy_spec;
-  using base_type = __base_value_proxy<OStream, Parent>;
+  typedef  __base_value_proxy_spec             this_type;
+  typedef  __base_value_proxy<OStream, Parent> base_type;
 
 public:
-  using stream_type = typename base_type::stream_type;
-  using parent_type = typename base_type::parent_type;
-  using char_type   = typename base_type::char_type;
-  using traits_type = typename base_type::traits_type;
+  typedef typename base_type::stream_type stream_type;
+  typedef typename base_type::parent_type parent_type;
+  typedef typename base_type::char_type   char_type;
+  typedef typename base_type::traits_type traits_type;
 
 protected:
   __base_value_proxy_spec(stream_type & os, parent_type const & parent)
@@ -116,14 +165,14 @@ public:
 template<typename OStream>
 class __base_value_proxy_spec<OStream, OStream>
   : public __base_value_proxy<OStream, OStream> {
-  using this_type = __base_value_proxy_spec;
-  using base_type = __base_value_proxy<OStream, OStream>;
+  typedef __base_value_proxy_spec              this_type;
+  typedef __base_value_proxy<OStream, OStream> base_type;
 
 public:
-  using stream_type = typename base_type::stream_type;
-  using parent_type = typename base_type::parent_type;
-  using char_type   = typename base_type::char_type;
-  using traits_type = typename base_type::traits_type;
+  typedef typename base_type::stream_type stream_type;
+  typedef typename base_type::parent_type parent_type;
+  typedef typename base_type::char_type   char_type;
+  typedef typename base_type::traits_type traits_type;
 
 protected:
   __base_value_proxy_spec(stream_type & os, parent_type const & parent)
@@ -138,43 +187,43 @@ template<typename OStream, typename Parent,
   typename OStream::char_type oc, typename OStream::char_type dc, typename OStream::char_type cc>
 class __base_collection_proxy
   : __base_value_proxy_spec<OStream, Parent> {
-  using this_type = __base_collection_proxy;
-  using base_type = __base_value_proxy_spec<OStream, Parent>;
+  typedef __base_collection_proxy                   this_type;
+  typedef __base_value_proxy_spec<OStream, Parent> base_type;
 
 public:
-  using stream_type = typename base_type::stream_type;
-  using parent_type = typename base_type::parent_type;
-  using char_type   = typename base_type::char_type;
-  using traits_type = typename base_type::traits_type;
+  typedef typename base_type::stream_type stream_type;
+  typedef typename base_type::parent_type parent_type;
+  typedef typename base_type::char_type   char_type;
+  typedef typename base_type::traits_type traits_type;
 
 protected:
   __base_collection_proxy(stream_type & os, parent_type const & parent)
-    : base_type(os, parent), state(__state::Empty) {}
+    : base_type(os, parent), state(Empty) {}
 
   bool open() const {
     if (!is_open()) return false;
-    auto & os = get_stream();
-    os << (state == __state::Empty ? oc : dc);
-    state = __state::Opened;
+    stream_type & os = get_stream();
+    os << (state == Empty ? oc : dc);
+    state = Opened;
     return true;
   }
 
   void close() const {
     if (!is_open()) return;
-    auto & os = get_stream();
-    if (state == __state::Empty) os << oc;
-    state = __state::Closed;
+    stream_type & os = get_stream();
+    if (state == Empty) os << oc;
+    state = Closed;
     os << cc;
   }
 
 public:
-  bool is_open() const { return state != __state::Closed; }
+  bool is_open() const { return state != Closed; }
   using base_type::get_stream;
   using base_type::get_parent;
 
 
 protected:
-  enum class __state { Empty, Opened, Closed } mutable state;
+  enum { Empty, Opened, Closed } mutable state;
 };
 
 template<typename OStream, typename Parent = OStream>
@@ -183,16 +232,16 @@ class __value_proxy
   template<typename T, typename U> friend class __value_proxy;
   template<typename T, typename U> friend class __array_proxy;
   template<typename T, typename U> friend class __object_proxy;
-  using this_type = __value_proxy;
-  using base_type = __base_value_proxy_spec<OStream, Parent>;
+  typedef __value_proxy                            this_type;
+  typedef __base_value_proxy_spec<OStream, Parent> base_type;
 
 public:
-  using stream_type = typename base_type::stream_type;
-  using parent_type = typename base_type::parent_type;
-  using char_type   = typename base_type::char_type;
-  using traits_type = typename base_type::traits_type;
-  using auto_parent_type = typename std::conditional<
-    std::is_same<stream_type, parent_type>::value, stream_type, parent_type const >::type;
+  typedef typename base_type::stream_type stream_type;
+  typedef typename base_type::parent_type parent_type;
+  typedef typename base_type::char_type   char_type;
+  typedef typename base_type::traits_type traits_type;
+  typedef typename conditional<is_same<stream_type, parent_type>::value,
+    stream_type, parent_type const >::type auto_parent_type;
 
   explicit
   __value_proxy(OStream & os)
@@ -233,16 +282,16 @@ class __array_proxy
   template<typename T, typename U> friend class __value_proxy;
   template<typename T, typename U> friend class __array_proxy;
   template<typename T, typename U> friend class __object_proxy;
-  using this_type = __array_proxy;
-  using base_type = __base_collection_proxy<OStream, Parent, '[', ',', ']'>;
+  typedef __array_proxy                                           this_type;
+  typedef __base_collection_proxy<OStream, Parent, '[', ',', ']'> base_type;
 
 public:
-  using stream_type = typename base_type::stream_type;
-  using parent_type = typename base_type::parent_type;
-  using char_type   = typename base_type::char_type;
-  using traits_type = typename base_type::traits_type;
-  using auto_parent_type = typename std::conditional<
-    std::is_same<stream_type, parent_type>::value, stream_type, parent_type const >::type;
+  typedef typename base_type::stream_type stream_type;
+  typedef typename base_type::parent_type parent_type;
+  typedef typename base_type::char_type   char_type;
+  typedef typename base_type::traits_type traits_type;
+  typedef typename conditional<is_same<stream_type, parent_type>::value,
+    stream_type, parent_type const >::type auto_parent_type;
 
   explicit
   __array_proxy(stream_type & os)
@@ -296,16 +345,16 @@ class __object_proxy
   template<typename T, typename U> friend class __value_proxy;
   template<typename T, typename U> friend class __array_proxy;
   template<typename T, typename U> friend class __object_proxy;
-  using this_type = __object_proxy;
-  using base_type = __base_collection_proxy<OStream, Parent, '{', ',', '}'>;
+  typedef __object_proxy                                          this_type;
+  typedef __base_collection_proxy<OStream, Parent, '{', ',', '}'> base_type;
 
 public:
-  using stream_type = typename base_type::stream_type;
-  using parent_type = typename base_type::parent_type;
-  using char_type   = typename base_type::char_type;
-  using traits_type = typename base_type::traits_type;
-  using auto_parent_type = typename std::conditional<
-    std::is_same<stream_type, parent_type>::value, stream_type, parent_type const >::type;
+  typedef typename base_type::stream_type stream_type;
+  typedef typename base_type::parent_type parent_type;
+  typedef typename base_type::char_type   char_type;
+  typedef typename base_type::traits_type traits_type;
+  typedef typename conditional<is_same<stream_type, parent_type>::value,
+    stream_type, parent_type const >::type auto_parent_type;
 
   explicit
   __object_proxy(stream_type & os)
@@ -357,16 +406,24 @@ __object_proxy<OStream>
 operator<<(OStream & os, object_tag const &) {
   return __object_proxy<OStream>(os);
 }
+
+#if __cplusplus > 199711L
 }
+#endif
 
 template<>
-struct value_type<std::nullptr_t> {
+struct value_type<null_type> {
   template<typename Json>
   void
-  operator()(Json const & json, std::nullptr_t) const {
+  operator()(Json const & json, null_type) const {
     json.get_stream() << "null";
   }
 };
+
+#if __cplusplus > 199711L
+template<>
+struct value_type<std::nullptr_t> : public value_type<null_type> { };
+#endif
 
 template<>
 struct value_type<bool> {
@@ -376,27 +433,29 @@ struct value_type<bool> {
 };
 
 template<typename Integral>
-struct value_type<Integral, typename std::enable_if<std::is_integral<Integral>::value
-    && !std::is_same<Integral, bool>::value>::type> {
+struct value_type<Integral,
+  typename enable_if<is_integral<Integral>::value
+    && !is_same<Integral, bool>::value>::type> {
   template<typename Json>
   void
   operator()(Json const & json, Integral value) const { json.get_stream() << +value; }
 };
 
 template<typename FloatingPoint>
-struct value_type<FloatingPoint, typename std::enable_if<std::is_floating_point<FloatingPoint>::value>::type> {
+struct value_type<FloatingPoint,
+  typename enable_if<is_floating_point<FloatingPoint>::value>::type> {
   template<typename Json>
   void
   operator()(Json const & json, FloatingPoint value) const {
     if (std::isfinite(value)) json.get_stream() << value;
-    else json::value_type<std::nullptr_t>()(json, nullptr);
+    else json::value_type<null_type>()(json, null);
   }
 };
 
 template<typename Char>
-struct value_type<std::basic_string<Char>> {
+struct value_type<std::basic_string<Char> > {
   template<typename Json>
-  typename std::enable_if<std::is_same<typename Json::char_type, Char>::value>::type
+  typename enable_if<is_same<typename Json::char_type, Char>::value>::type
   operator()(Json const & json, std::basic_string<Char> const & value) const {
     json.get_stream() << quote << value;
   }
@@ -406,7 +465,7 @@ template<typename Char>
 struct value_type<Char *,
   typename std::char_traits<Char>::char_type> {
   template<typename Json>
-  typename std::enable_if<std::is_same<typename Json::char_type, Char>::value>::type
+  typename enable_if<is_same<typename Json::char_type, Char>::value>::type
   operator()(Json const & json, Char const * value) const {
     json.get_stream() << quote << value;
   }

@@ -1,4 +1,4 @@
-cxx      = clang++ -std=c++11 -c
+cxx      = clang++ -c
 cxxflags = -stdlib=libc++ -g
 
 ld      = clang++

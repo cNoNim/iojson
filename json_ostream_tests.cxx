@@ -3,6 +3,7 @@
 
 struct vec2i {
   int x, y;
+  vec2i(int x, int y) : x(x), y(y) {}
 };
 
 namespace json {
@@ -23,15 +24,15 @@ int main() {
   using namespace std;
 
   cout << json::array <<
-    json::value << vec2i{ 3, 4 } <<
+    json::value << vec2i(3, 4) <<
     json::close << endl;
 
-  cout << json::value << vec2i{1, 2} << std::endl;
+  cout << json::value << vec2i(1, 2) << std::endl;
 
   cout << json::array << 1 << 2 << 3 << json::close << std::endl;
 
   cout << json::object <<
-    "null" << nullptr <<
+    "null" << json::null <<
     "true" << true <<
     "false" << false <<
     "int" << json::value << 1 <<
@@ -42,16 +43,16 @@ int main() {
         "empty" << json::object << json::close <<
         "foo" << "bar" <<
       json::close <<
-    "object" << vec2i{ 1, 2 } <<
+    "object" << vec2i(1, 2) <<
     "empty_array" << json::array << json::close <<
-    "array" << json::array << 1 << 2.2 << std::to_string(3) << json::close <<
+    "array" << json::array << 1 << 2.2 << "3" << json::close <<
     "array_of_object_1" << json::array <<
-      json::value << vec2i{ 3, 4 } <<
+      json::value << vec2i(3, 4) <<
       json::object << json::close <<
       json::close <<
     "array_of_object_2" << json::array <<
       json::object << json::close <<
-      vec2i{ 3, 4 } <<
+      vec2i(3, 4) <<
       json::close <<
     "array_of_array" << json::array <<
       json::value << json::array << 1 << 2 << 3 << json::close <<
