@@ -135,9 +135,9 @@ public:
 
 template<typename OStream, typename Parent,
   typename OStream::char_type oc, typename OStream::char_type dc, typename OStream::char_type cc>
-class __base_proxy
+class __base_collection_proxy
   : __base_value_proxy_spec<OStream, Parent> {
-  using this_type = __base_proxy;
+  using this_type = __base_collection_proxy;
   using base_type = __base_value_proxy_spec<OStream, Parent>;
 
 public:
@@ -147,7 +147,7 @@ public:
   using traits_type = typename base_type::traits_type;
 
 protected:
-  __base_proxy(stream_type & os, parent_type const & parent)
+  __base_collection_proxy(stream_type & os, parent_type const & parent)
     : base_type(os, parent), state(__state::Empty) {}
 
   bool open() const {
@@ -226,12 +226,12 @@ public:
 
 template<typename OStream, typename Parent = OStream>
 class __array_proxy
-  : public __base_proxy<OStream, Parent, '[', ',', ']'> {
+  : public __base_collection_proxy<OStream, Parent, '[', ',', ']'> {
   template<typename T, typename U> friend class __value_proxy;
   template<typename T, typename U> friend class __array_proxy;
   template<typename T, typename U> friend class __object_proxy;
   using this_type = __array_proxy;
-  using base_type = __base_proxy<OStream, Parent, '[', ',', ']'>;
+  using base_type = __base_collection_proxy<OStream, Parent, '[', ',', ']'>;
 
 public:
   using stream_type = typename base_type::stream_type;
@@ -287,12 +287,12 @@ public:
 
 template<typename OStream, typename Parent = OStream>
 class __object_proxy
-  : public __base_proxy<OStream, Parent, '{', ',', '}'> {
+  : public __base_collection_proxy<OStream, Parent, '{', ',', '}'> {
   template<typename T, typename U> friend class __value_proxy;
   template<typename T, typename U> friend class __array_proxy;
   template<typename T, typename U> friend class __object_proxy;
   using this_type = __object_proxy;
-  using base_type = __base_proxy<OStream, Parent, '{', ',', '}'>;
+  using base_type = __base_collection_proxy<OStream, Parent, '{', ',', '}'>;
 
 public:
   using stream_type = typename base_type::stream_type;
