@@ -9,9 +9,9 @@ struct vec2i {
 namespace json {
 template<>
 struct value_type<vec2i> {
-  template<typename Return, typename Json>
-  Return
-  apply(Json const & json, vec2i const & value) const {
+  template<typename Json>
+  closed_tag
+  operator()(Json const & json, vec2i const & value) const {
     return json << object << "x" << value.x << "y" << value.y << close;
   }
 };
@@ -25,12 +25,12 @@ int main() {
 
   cout << json::array <<
     json::value << vec2i(3, 4) << 'c' << hello << world <<
-    json::close << endl;
-
-  cout << json::value << vec2i(1, 2) << std::endl;
-
-  cout << json::array << 1 << 2 << 3 << json::close << std::endl;
-
+    json::close;
+  cout << endl;
+  cout << json::value << json::value << json::value << json::value << vec2i(1, 2);
+  cout << endl;
+  cout << json::array << 1 << 2 << 3 << json::close;
+  cout << endl;
   cout << json::object <<
     "null" << json::null <<
     "true" << true <<
@@ -61,6 +61,7 @@ int main() {
     "object_with_array" << json::object <<
       "array" << json::array << 1 << 2 << 3 << json::close <<
       json::close <<
-    json::close << endl;
+    json::close;
+  cout << endl;
   return 0;
 }
