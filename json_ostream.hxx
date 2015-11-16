@@ -52,14 +52,30 @@ inline
 #endif
 namespace _v1 {
 
-struct value_tag   { constexpr value_tag() {} }   constexpr value;
-struct array_tag   { constexpr array_tag() {} }   constexpr array;
-struct object_tag  { constexpr object_tag() {} }  constexpr object;
-struct close_tag   { constexpr close_tag() {} }   constexpr close;
-
 template<typename OStream, typename Parent> class __value_proxy;
 template<typename OStream, typename Parent> class __array_proxy;
 template<typename OStream, typename Parent> class __object_proxy;
+
+struct value_tag  { constexpr value_tag() {} }  constexpr value;
+struct array_tag  { constexpr array_tag() {} }  constexpr array;
+struct object_tag { constexpr object_tag() {} } constexpr object;
+struct close_tag  { constexpr close_tag() {} }  constexpr close;
+
+class api_tag {
+  api_tag() {}
+  static api_tag const & get() { static api_tag tag; return tag; }
+
+  template<typename OStream, typename Parent> friend class __base_value_proxy;
+
+  template<typename OS> friend __object_proxy<OS, OS>
+  operator<<(OS & os, object_tag const &);
+
+  template<typename OS> friend __value_proxy<OS, OS>
+  operator<<(OS & os, value_tag const &);
+
+  template<typename OS> friend __array_proxy<OS, OS>
+  operator<<(OS & os, array_tag const &);
+};
 
 template<typename OStream, typename Parent>
 class __base_value_proxy {
@@ -76,6 +92,7 @@ protected:
 
   stream_type & get_stream() const { return os; }
   parent_type const & get_parent() const { return parent; }
+  api_tag const & get_tag() const { return api_tag::get(); }
 
 private:
   stream_type & os;
@@ -98,6 +115,7 @@ protected:
 
   using base_type::get_stream;
   using base_type::get_parent;
+  using base_type::get_tag;
 };
 
 template<typename OStream>
@@ -116,6 +134,7 @@ protected:
 
   using base_type::get_stream;
   parent_type & get_parent() const { return get_stream(); }
+  using base_type::get_tag;
 };
 
 template<typename OStream, typename Parent,
@@ -136,6 +155,7 @@ protected:
 
   using base_type::get_stream;
   using base_type::get_parent;
+  using base_type::get_tag;
 
   void open() const {
     if (!is_open()) return;
@@ -158,9 +178,6 @@ private:
 template<typename OStream, typename Parent = OStream>
 class __value_proxy
   : public __base_value_proxy_spec<OStream, Parent> {
-  template<typename T, typename U> friend class __value_proxy;
-  template<typename T, typename U> friend class __array_proxy;
-  template<typename T, typename U> friend class __object_proxy;
   typedef __value_proxy                            this_type;
   typedef __base_value_proxy_spec<OStream, Parent> base_type;
 
@@ -170,6 +187,13 @@ public:
   typedef typename base_type::char_type   char_type;
   typedef typename conditional<is_same<stream_type, parent_type>::value,
     stream_type &, parent_type const &>::type return_type;
+
+  explicit
+  __value_proxy(api_tag const &, stream_type & os)
+    : base_type(os, os) {}
+
+  __value_proxy(api_tag const &, stream_type & os, parent_type const & parent)
+    : base_type(os, parent) {}
 
   template<typename T>
   return_type
@@ -209,15 +233,9 @@ public:
   }
 
 private:
-  explicit
-  __value_proxy(stream_type & os)
-    : base_type(os, os) {}
-
-  __value_proxy(stream_type & os, parent_type const & parent)
-    : base_type(os, parent) {}
-
   using base_type::get_stream;
   using base_type::get_parent;
+  using base_type::get_tag;
 
   template<typename T>
   friend return_type
@@ -232,25 +250,18 @@ private:
 
   friend __object_proxy<stream_type, parent_type>
   operator<<(this_type const & proxy, object_tag const &) {
-    return __object_proxy<stream_type, parent_type>(proxy.get_stream(), proxy.get_parent());
+    return __object_proxy<stream_type, parent_type>(proxy.get_tag(), proxy.get_stream(), proxy.get_parent());
   }
 
   friend __array_proxy<stream_type, parent_type>
   operator<<(this_type const & proxy, array_tag const &) {
-    return __array_proxy<stream_type, parent_type>(proxy.get_stream(), proxy.get_parent());
+    return __array_proxy<stream_type, parent_type>(proxy.get_tag(), proxy.get_stream(), proxy.get_parent());
   }
-
-  template<typename OS>
-  friend __value_proxy<OS, OS>
-  operator<<(OS & os, value_tag const &);
 };
 
 template<typename OStream, typename Parent = OStream>
 class __array_proxy
   : public __base_collection_proxy<OStream, Parent, '[', ',', ']'> {
-  template<typename T, typename U> friend class __value_proxy;
-  template<typename T, typename U> friend class __array_proxy;
-  template<typename T, typename U> friend class __object_proxy;
   typedef __array_proxy                                           this_type;
   typedef __base_collection_proxy<OStream, Parent, '[', ',', ']'> base_type;
 
@@ -261,16 +272,17 @@ public:
   typedef typename conditional<is_same<stream_type, parent_type>::value,
     stream_type &, parent_type const &>::type return_type;
 
-private:
   explicit
-  __array_proxy(stream_type & os)
+  __array_proxy(api_tag const &, stream_type & os)
     : base_type(os, os) {}
 
-  __array_proxy(stream_type & os, parent_type const & parent)
+  __array_proxy(api_tag const &, stream_type & os, parent_type const & parent)
     : base_type(os, parent) {}
 
+private:
   using base_type::get_stream;
   using base_type::get_parent;
+  using base_type::get_tag;
 
   template<typename T>
   friend this_type const &
@@ -281,19 +293,19 @@ private:
   friend __value_proxy<stream_type, this_type>
   operator<<(this_type const & proxy, value_tag const &) {
     proxy.open();
-    return __value_proxy<stream_type, this_type>(proxy.get_stream(), proxy);
+    return __value_proxy<stream_type, this_type>(proxy.get_tag(), proxy.get_stream(), proxy);
   }
 
   friend __array_proxy<stream_type, this_type>
   operator<<(this_type const & proxy, array_tag const &) {
     proxy.open();
-    return __array_proxy<stream_type, this_type>(proxy.get_stream(), proxy);
+    return __array_proxy<stream_type, this_type>(proxy.get_tag(), proxy.get_stream(), proxy);
   }
 
   friend __object_proxy<stream_type, this_type>
   operator<<(this_type const & proxy, object_tag const &) {
     proxy.open();
-    return __object_proxy<stream_type, this_type>(proxy.get_stream(), proxy);
+    return __object_proxy<stream_type, this_type>(proxy.get_tag(), proxy.get_stream(), proxy);
   }
 
   friend return_type
@@ -301,18 +313,11 @@ private:
     proxy.close();
     return proxy.get_parent();
   }
-
-  template<typename OS>
-  friend __array_proxy<OS, OS>
-  operator<<(OS & os, array_tag const &);
 };
 
 template<typename OStream, typename Parent = OStream>
 class __object_proxy
   : public __base_collection_proxy<OStream, Parent, '{', ',', '}'> {
-  template<typename T, typename U> friend class __value_proxy;
-  template<typename T, typename U> friend class __array_proxy;
-  template<typename T, typename U> friend class __object_proxy;
   typedef __object_proxy                                          this_type;
   typedef __base_collection_proxy<OStream, Parent, '{', ',', '}'> base_type;
 
@@ -323,25 +328,26 @@ public:
   typedef typename conditional<is_same<stream_type, parent_type>::value,
     stream_type &, parent_type const &>::type return_type;
 
-private:
   explicit
-  __object_proxy(stream_type & os)
+  __object_proxy(api_tag const &, stream_type & os)
     : base_type(os, os) {}
 
-  __object_proxy(stream_type & os, parent_type const & parent)
+  __object_proxy(api_tag const &, stream_type & os, parent_type const & parent)
     : base_type(os, parent) {}
 
+private:
   using base_type::get_stream;
   using base_type::get_parent;
+  using base_type::get_tag;
 
   template<typename String>
   friend typename enable_if<value_type<String>::is_string,
     __value_proxy<stream_type, this_type> >::type
   operator<<(this_type const & proxy, String const & str) {
     proxy.open();
-    stream_type & os = (__value_proxy<stream_type, this_type>(proxy.get_stream(), proxy) << str).get_stream();
+    stream_type & os = (__value_proxy<stream_type, this_type>(proxy.get_tag(), proxy.get_stream(), proxy) << str).get_stream();
     os << ':';
-    return __value_proxy<stream_type, this_type>(os, proxy);
+    return __value_proxy<stream_type, this_type>(proxy.get_tag(), os, proxy);
   }
 
   friend return_type
@@ -349,23 +355,19 @@ private:
     proxy.close();
     return proxy.get_parent();
   }
-
-  template<typename OS>
-  friend __object_proxy<OS, OS>
-  operator<<(OS & os, object_tag const &);
 };
 
 template<typename OStream>
 __value_proxy<OStream>
-operator<<(OStream & os, value_tag const &) { return __value_proxy<OStream>(os); }
+operator<<(OStream & os, value_tag const &) { return __value_proxy<OStream>(api_tag::get(), os); }
 
 template<typename OStream>
 __array_proxy<OStream>
-operator<<(OStream & os, array_tag const &) { return __array_proxy<OStream>(os); }
+operator<<(OStream & os, array_tag const &) { return __array_proxy<OStream>(api_tag::get(), os); }
 
 template<typename OStream>
 __object_proxy<OStream>
-operator<<(OStream & os, object_tag const &) { return __object_proxy<OStream>(os); }
+operator<<(OStream & os, object_tag const &) { return __object_proxy<OStream>(api_tag::get(), os); }
 
 }
 #if __cplusplus <= 199711L
