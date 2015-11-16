@@ -1,4 +1,5 @@
-#include <cmath>
+#ifndef __JSON_OSTREAM__
+#define __JSON_OSTREAM__
 
 #if __cplusplus <= 199711L
 #define constexpr
@@ -27,7 +28,7 @@ template <> struct is_integral<long long> { static const bool value = true; };
 template <> struct is_integral<unsigned long long> { static const bool value = true; };
 template <typename, typename> struct is_same { static const bool value = false; };
 template <typename T> struct is_same<T, T> { static const bool value = true; };
-}
+} // namespace json
 #else
 #include <cstddef>
 #include <type_traits>
@@ -38,7 +39,7 @@ using std::is_floating_point;
 using std::is_integral;
 using std::is_same;
 using std::nullptr_t;
-}
+} // namespace json
 #endif
 
 namespace json {
@@ -369,14 +370,18 @@ template<typename OStream>
 __object_proxy<OStream>
 operator<<(OStream & os, object_tag const &) { return __object_proxy<OStream>(api_tag::get(), os); }
 
-}
+} // namespace json::_v1
 #if __cplusplus <= 199711L
 using _v1::value;
 using _v1::array;
 using _v1::object;
 using _v1::close;
 #endif
+} // namespace json
 
+#include <cmath>
+
+namespace json {
 template<>
 struct value_type<null_type> {
   template<typename Return, typename Json>
@@ -416,7 +421,7 @@ struct value_type<FloatingPoint,
   }
 };
 
-}
+} // namespace json
 
 #include <string>
 
@@ -448,4 +453,6 @@ template<typename Char>
 struct value_type<std::basic_string<Char> >
   : public string_type<std::basic_string<Char>, Char > {};
 
-}
+} // namespace json
+
+#endif // __JSON_OSTREAM__
