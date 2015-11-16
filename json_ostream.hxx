@@ -1,44 +1,43 @@
 #ifndef __JSON_OSTREAM__
 #define __JSON_OSTREAM__
 
-#if __cplusplus <= 199711L
-#define constexpr
-namespace json {
-template <bool, typename I, typename> struct conditional { typedef I type;};
-template <typename I, typename T> struct conditional<false, I, T> { typedef T type; };
-template <bool, typename T = void> struct enable_if {};
-template <typename T> struct enable_if<true, T> { typedef T type; };
-template <typename> struct is_floating_point { static const bool value = false; };
-template <> struct is_floating_point<float> { static const bool value = true; };
-template <> struct is_floating_point<double> { static const bool value = true; };
-template <> struct is_floating_point<long double> { static const bool value = true; };
-template <typename> struct is_integral { static const bool value = false; };
-template <> struct is_integral<bool> { static const bool value = true; };
-template <> struct is_integral<char> { static const bool value = true; };
-template <> struct is_integral<signed char> { static const bool value = true; };
-template <> struct is_integral<unsigned char> { static const bool value = true; };
-template <> struct is_integral<wchar_t> { static const bool value = true; };
-template <> struct is_integral<short> { static const bool value = true; };
-template <> struct is_integral<unsigned short> { static const bool value = true; };
-template <> struct is_integral<int> { static const bool value = true; };
-template <> struct is_integral<unsigned int> { static const bool value = true; };
-template <> struct is_integral<long> { static const bool value = true; };
-template <> struct is_integral<unsigned long> { static const bool value = true; };
-template <> struct is_integral<long long> { static const bool value = true; };
-template <> struct is_integral<unsigned long long> { static const bool value = true; };
-template <typename, typename> struct is_same { static const bool value = false; };
-template <typename T> struct is_same<T, T> { static const bool value = true; };
-} // namespace json
-#else
+#if __cplusplus > 199711L || _MSC_VER > 1800
 #include <cstddef>
 #include <type_traits>
 namespace json {
-using std::conditional;
-using std::enable_if;
-using std::is_floating_point;
-using std::is_integral;
-using std::is_same;
-using std::nullptr_t;
+  using std::conditional;
+  using std::enable_if;
+  using std::is_floating_point;
+  using std::is_integral;
+  using std::is_same;
+  using std::nullptr_t;
+} // namespace json
+#else
+namespace json {
+  template <bool, typename I, typename> struct conditional { typedef I type; };
+  template <typename I, typename T> struct conditional<false, I, T> { typedef T type; };
+  template <bool, typename T = void> struct enable_if {};
+  template <typename T> struct enable_if<true, T> { typedef T type; };
+  template <typename> struct is_floating_point { static const bool value = false; };
+  template <> struct is_floating_point<float> { static const bool value = true; };
+  template <> struct is_floating_point<double> { static const bool value = true; };
+  template <> struct is_floating_point<long double> { static const bool value = true; };
+  template <typename> struct is_integral { static const bool value = false; };
+  template <> struct is_integral<bool> { static const bool value = true; };
+  template <> struct is_integral<char> { static const bool value = true; };
+  template <> struct is_integral<signed char> { static const bool value = true; };
+  template <> struct is_integral<unsigned char> { static const bool value = true; };
+  template <> struct is_integral<wchar_t> { static const bool value = true; };
+  template <> struct is_integral<short> { static const bool value = true; };
+  template <> struct is_integral<unsigned short> { static const bool value = true; };
+  template <> struct is_integral<int> { static const bool value = true; };
+  template <> struct is_integral<unsigned int> { static const bool value = true; };
+  template <> struct is_integral<long> { static const bool value = true; };
+  template <> struct is_integral<unsigned long> { static const bool value = true; };
+  template <> struct is_integral<long long> { static const bool value = true; };
+  template <> struct is_integral<unsigned long long> { static const bool value = true; };
+  template <typename, typename> struct is_same { static const bool value = false; };
+  template <typename T> struct is_same<T, T> { static const bool value = true; };
 } // namespace json
 #endif
 
@@ -57,10 +56,10 @@ template<typename OStream, typename Parent> class __value_proxy;
 template<typename OStream, typename Parent> class __array_proxy;
 template<typename OStream, typename Parent> class __object_proxy;
 
-struct value_tag  { constexpr value_tag() {} }  constexpr value;
-struct array_tag  { constexpr array_tag() {} }  constexpr array;
-struct object_tag { constexpr object_tag() {} } constexpr object;
-struct close_tag  { constexpr close_tag() {} }  constexpr close;
+struct value_tag  { value_tag() {} }  value;
+struct array_tag  { array_tag() {} }  array;
+struct object_tag { object_tag() {} } object;
+struct close_tag  { close_tag() {} }  close;
 
 class api_tag {
   api_tag() {}
